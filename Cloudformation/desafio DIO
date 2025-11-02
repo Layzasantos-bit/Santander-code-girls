@@ -1,0 +1,98 @@
+# 🚀 Desafio DIO: Implementando a Primeira Stack com AWS CloudFormation
+
+Este repositório documenta a implementação do laboratório "Implementando sua Primeira Stack com AWS CloudFormation" da [Digital Innovation One (DIO)](https://dio.me/).
+
+O objetivo principal foi aplicar os conceitos de **Infraestrutura como Código (IaC)** para provisionar, de forma automatizada, um ambiente de nuvem na AWS. O projeto consiste em um template CloudFormation que cria uma instância EC2 (servidor virtual) e a configura como um servidor web Apache.
+
+## 📌 Sumário
+
+* [O que é AWS CloudFormation e IaC?](#-o-que-é-aws-cloudformation-e-iac)
+* [Tecnologias Utilizadas](#-tecnologias-utilizadas)
+* [Conceitos-Chave Aplicados](#-conceitos-chave-aplicados)
+* [Descrição do Projeto (A Stack)](#-descrição-do-projeto-a-stack)
+* [O Template (`minha-primeira-stack.yaml`)](#-o-template-minha-primeira-stackyaml)
+* [Resultados e Insights](#-resultados-e-insights)
+* [Conclusão](#-conclusão)
+
+## 💡 O que é AWS CloudFormation e IaC?
+
+**Infraestrutura como Código (IaC)** é a prática de gerenciar e provisionar infraestrutura (redes, servidores, bancos de dados) por meio de arquivos de definição legíveis por máquina (código), em vez de configuração manual ou ferramentas interativas.
+
+O **AWS CloudFormation** é o serviço da AWS que nos permite aplicar o IaC. Nós escrevemos um **template** (em YAML ou JSON) que descreve todos os recursos da AWS que desejamos (ex: "quero uma instância EC2" e "quero um grupo de segurança"). O CloudFormation lê esse template e cuida de provisionar, configurar e conectar todos esses recursos na ordem correta, tratando as dependências automaticamente.
+
+Os principais benefícios são:
+* **Automatização:** Criação e exclusão de ambientes completos com um único comando.
+* **Consistência:** Garante que o ambiente de desenvolvimento seja idêntico ao de produção.
+* **Versionamento:** O template pode ser versionado no Git, como qualquer outro código.
+* **Reutilização:** O mesmo template pode ser usado para criar múltiplas "Stacks".
+
+## 🛠️ Tecnologias Utilizadas
+
+* **AWS CloudFormation:** Para a orquestração e provisionamento da infraestrutura.
+* **AWS EC2 (Elastic Compute Cloud):** Para provisionar o servidor virtual (instância).
+* **AWS VPC (Security Groups):** Para configurar as regras de firewall da instância.
+* **YAML:** A linguagem utilizada para escrever o template do CloudFormation.
+* **Bash Script (em `UserData`):** Para instalar e configurar o servidor web Apache.
+
+## 🧠 Conceitos-Chave Aplicados
+
+Durante o laboratório, os seguintes pilares do CloudFormation foram aplicados:
+
+1.  **Template:** O arquivo YAML (`minha-primeira-stack.yaml`) que serve como "planta baixa" da nossa infraestrutura.
+2.  **Stack:** A instância da nossa infraestrutura, ou seja, o conjunto de recursos que o CloudFormation criou a partir do template.
+3.  **Parameters:** Permite customizar o template na hora da criação da Stack. No nosso caso, usamos o `InstanceType` para poder escolher o "tamanho" da máquina (ex: `t2.micro`).
+4.  **Resources:** A seção mais importante do template. É a lista de recursos que a AWS deve criar. Nós definimos dois:
+    * `AWS::EC2::SecurityGroup`: O firewall.
+    * `AWS::EC2::Instance`: O servidor.
+5.  **`UserData`:** Uma propriedade especial da instância EC2 que nos permite executar um script de *bootstrap* (configuração inicial) assim que a máquina é ligada. Usamos isso para instalar o Apache.
+6.  **`!Ref` e `!Sub`:** Funções intrínsecas do CloudFormation.
+    * `!Ref InstanceType`: Usado para "pegar" o valor fornecido no parâmetro `InstanceType`.
+    * `!Ref WebServerSecurityGroup`: Usado para "pegar" o ID do grupo de segurança que foi criado no mesmo template e associá-lo à instância.
+7.  **Outputs:** Permite que a Stack "devolva" informações úteis após a criação. Usamos isso para exibir a URL pública do nosso novo site.
+
+## 🔧 Descrição do Projeto (A Stack)
+
+A Stack definida no template `minha-primeira-stack.yaml` provisiona um servidor web simples e público. Ela cria os seguintes recursos:
+
+1.  **Um Grupo de Segurança (`WebServerSecurityGroup`):**
+    * Libera a **Porta 80 (HTTP)** para o mundo (`0.0.0.0/0`), permitindo que qualquer pessoa acesse nosso site.
+    * Libera a **Porta 22 (SSH)** para o mundo (`0.0.0.0/0`), permitindo o acesso de administrador (em um ambiente real, isso seria restrito a um IP específico).
+
+2.  **Uma Instância EC2 (`WebServerInstance`):**
+    * Usa o `InstanceType` definido no parâmetro (padrão `t2.micro`).
+    * Usa uma AMI (Imagem) do Amazon Linux 2.
+    * Associa o grupo de segurança criado acima.
+    * Executa um script `UserData` que instala o `httpd` (Servidor Apache), inicia o serviço e cria um arquivo `index.html` de teste.
+
+3.  **Uma Saída (`WebsiteURL`):**
+    * Expõe publicamente o DNS da instância EC2, formatado como uma URL clicável (`http://...`).
+
+## 📑 O Template (`minha-primeira-stack.yaml`)
+
+O código-fonte completo da nossa infraestrutura está disponível no arquivo [minha-primeira-stack.yaml](minha-primeira-stack.yaml).
+
+*(Se preferir, você pode colar o código YAML aqui também, dentro de um bloco de código, como no meu exemplo anterior)*
+
+## ✨ Resultados e Insights
+
+* **O "Momento Aha!":** O maior insight foi ver a infraestrutura subir sozinha. Após fazer o upload do template e clicar em "Create Stack", foi possível assistir o CloudFormation criar o Security Group e depois a Instância, sem nenhuma intervenção manual.
+* **Poder da Automação:** O verdadeiro poder foi visto ao **excluir a Stack**. Com um único clique em "Delete", o CloudFormation desfez *tudo* o que havia criado (instância e security group), limpando o ambiente perfeitamente. Isso é impossível de garantir manualmente.
+* **Depuração (Debugging):** Um desafio comum é quando a Stack falha (status `ROLLBACK_COMPLETE`). Isso geralmente acontece por erros de sintaxe no YAML, permissões do IAM, ou um AMI ID incorreto para a região. A aba "Events" no console do CloudFormation foi essencial para descobrir a causa do erro.
+
+### Screenshots da Execução
+
+Abaixo estão os resultados da implementação da Stack.
+
+**1. Stack Criada com Sucesso (`CREATE_COMPLETE`)**
+*(**SUA TAREFA:** Tire um screenshot do console do CloudFormation mostrando o status "CREATE_COMPLETE" da sua stack e coloque na pasta `/images`)*
+![Stack Criada com Sucesso](images/stack-create-complete.png)
+
+**2. Verificação do Servidor Web**
+*(**SUA TAREFA:** Pegue a URL no "Outputs" da sua stack, abra no navegador, tire um screenshot da página HTML e coloque na pasta `/images`)*
+![Página Web Funcionando](images/servidor-web-resultado.png)
+
+## 🏁 Conclusão
+
+Este laboratório foi uma excelente introdução prática ao conceito de Infraestrutura como Código. O CloudFormation remove o risco de erro humano, garante consistência e permite que a infraestrutura seja tratada como software: versionada, revisada e reutilizada.
+
+Embora um template simples, ele estabelece a base para a criação de arquiteturas muito mais complexas, como balanceadores de carga, bancos de dados (RDS) e redes (VPC) inteiras, tudo de forma automatizada.
