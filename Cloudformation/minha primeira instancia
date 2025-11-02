@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Desafio DIO - Primeira Stack CloudFormation (Servidor Web Apache)
+
+Parameters:
+  InstanceType:
+    Description: Tipo da instância EC2 (ex: t2.micro)
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Deve ser um tipo de instância válido.
+
+Resources:
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Libera acesso HTTP (porta 80) e SSH (porta 22)
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: WebServer-SG-Desafio-DIO
+
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: 'ami-0c7217cdde317cfec' # AMI Amazon Linux 2 (us-east-1)
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<html><h1>Servidor Web criado com AWS CloudFormation!</h1><h2>Desafio DIO Concluido!</h2></html>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: WebServer-Instance-Desafio-DIO
+
+Outputs:
+  WebsiteURL:
+    Description: URL do servidor web
+    Value: !Sub 'http://${WebServerInstance.PublicDnsName}'
+  InstanceId:
+    Description: ID da instância EC2 criada
+    Value: !Ref WebServerInstance
