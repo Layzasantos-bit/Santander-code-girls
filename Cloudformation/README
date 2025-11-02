@@ -71,7 +71,7 @@ A Stack definida no template `minha-primeira-stack.yaml` provisiona um servidor 
 
 O código-fonte completo da nossa infraestrutura está disponível no arquivo [minha-primeira-stack.yaml](minha-primeira-stack.yaml).
 
-*(Se preferir, você pode colar o código YAML aqui também, dentro de um bloco de código, como no meu exemplo anterior)*
+
 
 ## ✨ Resultados e Insights
 
@@ -79,20 +79,3 @@ O código-fonte completo da nossa infraestrutura está disponível no arquivo [m
 * **Poder da Automação:** O verdadeiro poder foi visto ao **excluir a Stack**. Com um único clique em "Delete", o CloudFormation desfez *tudo* o que havia criado (instância e security group), limpando o ambiente perfeitamente. Isso é impossível de garantir manualmente.
 * **Depuração (Debugging):** Um desafio comum é quando a Stack falha (status `ROLLBACK_COMPLETE`). Isso geralmente acontece por erros de sintaxe no YAML, permissões do IAM, ou um AMI ID incorreto para a região. A aba "Events" no console do CloudFormation foi essencial para descobrir a causa do erro.
 
-### Screenshots da Execução
-
-Abaixo estão os resultados da implementação da Stack.
-
-**1. Stack Criada com Sucesso (`CREATE_COMPLETE`)**
-*(**SUA TAREFA:** Tire um screenshot do console do CloudFormation mostrando o status "CREATE_COMPLETE" da sua stack e coloque na pasta `/images`)*
-![Stack Criada com Sucesso](images/stack-create-complete.png)
-
-**2. Verificação do Servidor Web**
-*(**SUA TAREFA:** Pegue a URL no "Outputs" da sua stack, abra no navegador, tire um screenshot da página HTML e coloque na pasta `/images`)*
-![Página Web Funcionando](images/servidor-web-resultado.png)
-
-## 🏁 Conclusão
-
-Este laboratório foi uma excelente introdução prática ao conceito de Infraestrutura como Código. O CloudFormation remove o risco de erro humano, garante consistência e permite que a infraestrutura seja tratada como software: versionada, revisada e reutilizada.
-
-Embora um template simples, ele estabelece a base para a criação de arquiteturas muito mais complexas, como balanceadores de carga, bancos de dados (RDS) e redes (VPC) inteiras, tudo de forma automatizada.
