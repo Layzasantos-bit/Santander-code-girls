@@ -1,0 +1,123 @@
+# 🚀 Desafio DIO: Processamento em Larga Escala com AWS Step Functions
+
+Este repositório documenta a implementação do laboratório "Consolidando Workflows Automatizados com AWS Step Functions" da [Digital Innovation One (DIO)](https://dio.me/).
+
+O projeto focou em um caso de uso avançado e de alta performance: **o processamento paralelo de um grande volume de dados (arquivos) armazenados em um bucket Amazon S3, utilizando o estado `Map` no modo distribuído.**
+
+## 📌 Sumário
+
+* [O que é AWS Step Functions?](#-o-que-é-aws-step-functions)
+* [Tecnologias Utilizadas](#-tecnologias-utilizadas)
+* [Conceitos-Chave Aplicados](#-conceitos-chave-aplicados)
+* [Descrição do Workflow do Laboratório](#-descrição-do-workflow-do-laboratório)
+* [Arquitetura Visual do Workflow](#-arquitetura-visual-do-workflow)
+* [Definição da Máquina de Estado (ASL)](#-definição-da-máquina-de-estado-asl)
+* [Resultados e Insights](#-resultados-e-insights)
+* [Conclusão](#-conclusão)
+
+## 💡 O que é AWS Step Functions?
+
+O **AWS Step Functions** é um serviço de orquestração *serverless* que permite coordenar múltiplos serviços da AWS em fluxos de trabalho visuais e resilientes. Ele é baseado no conceito de **Máquinas de Estado** e utiliza uma linguagem declarativa baseada em JSON chamada **Amazon States Language (ASL)**.
+
+Em vez de acoplar serviços (como funções Lambda chamando outras funções Lambda), o Step Functions atua como um "maestro" central. Ele gerencia o fluxo, o tratamento de erros, as retentativas e a lógica condicional, permitindo que cada componente (microsserviço) foque apenas na sua tarefa.
+
+## 🛠️ Tecnologias Utilizadas
+
+Para a construção deste projeto, os seguintes serviços da AWS foram essenciais:
+
+* **AWS Step Functions:** Para a definição, orquestração e monitoramento do workflow paralelo.
+* **Amazon S3 (Simple Storage Service):** Atuou como a fonte de dados (`ItemReader`), armazenando os milhares de arquivos que precisavam ser processados.
+* **AWS Lambda:** Foi o nosso processador (`ItemProcessor`). Cada execução paralela do workflow invocou uma função Lambda para realizar o trabalho em um arquivo individual.
+* **AWS IAM (Identity and Access Management):** Fundamental para conceder as permissões corretas para que o Step Functions pudesse ler do bucket S3 e invocar as funções Lambda.
+
+## 🧠 Conceitos-Chave Aplicados
+
+Este laboratório foi focado em conceitos avançados de processamento de dados. Os principais aprendizados foram:
+
+1.  **Estado `Map` (Modo Distribuído):** Este foi o coração do projeto. Diferente do modo *inline*, o modo distribuído é otimizado para processar conjuntos de dados em escala de petabytes. Ele lê os itens diretamente de uma fonte (como o S3) e inicia milhares de "execuções-filhas" em paralelo.
+2.  **`ItemReader`:** Configuramos o estado `Map` para ler os dados de origem diretamente de um bucket S3, especificando qual bucket e prefixo continham os arquivos a serem processados.
+3.  **`ItemProcessor`:** Definimos o "trabalho" a ser feito para cada item. No nosso caso, o processador era uma máquina de estado interna simples que tinha como única tarefa (`Task`) invocar uma função Lambda.
+4.  **Alta Concorrência (`MaxConcurrency`):** Aprendemos a controlar o nível de paralelismo. O Step Functions pode lançar até 10.000 execuções paralelas simultaneamente, permitindo um processamento massivo em muito pouco tempo.
+5.  **Desacoplamento:** Reforçamos o conceito de que a função Lambda não precisa saber *quantos* arquivos existem ou *quem* a chamou. Ela apenas recebe um evento (contendo a informação do arquivo S3) e executa sua lógica de processamento.
+
+## 🔧 Descrição do Workflow do Laboratório
+
+O objetivo do workflow implementado foi **simular um processo de ETL (Extração, Transformação e Carga) em massa**. O fluxo de trabalho foi projetado para "varrer" um bucket S3, encontrar todos os arquivos .json ou .csv, e aplicar uma lógica de validação/transformação em cada um deles de forma independente e paralela.
+
+O processo funciona da seguinte forma:
+
+1.  **Início:** A máquina de estado é iniciada.
+2.  **Estado `Map` (Distribuído):** Este único estado assume o controle.
+    * **Leitura (Read):** O `ItemReader` é acionado e começa a listar os objetos no bucket S3 `meu-bucket-de-entrada-dio`.
+    * **Processamento (Process):** Para cada arquivo encontrado, o Step Functions inicia uma nova execução-filha paralela.
+    * **Execução-Filha:** Cada uma dessas execuções invoca a função Lambda `dio-lab-processador-de-arquivos`. Esta função (simulada) poderia estar validando o schema de um JSON, limpando dados de um CSV, ou gerando metadados.
+3.  **Aguardar Conclusão:** A execução principal do Step Functions aguarda até que **todas** as milhares de execuções-filhas tenham sido concluídas (seja com sucesso ou falha).
+4.  **Fim:** O workflow é marcado como concluído.
+
+## 📊 Arquitetura Visual do Workflow
+
+Abaixo está a visualização gráfica da máquina de estado, conforme gerada pelo console do AWS Step Functions. Ela é elegantemente simples, pois toda a complexidade do paralelismo é abstraída pelo único estado `Map`.
+
+*(**SUA TAREFA:** Tire uma captura de tela do diagrama do workflow, como a que aparece no seu vídeo, salve na pasta `/images` do seu repositório e substitua o link abaixo.)*
+
+![Visualização do Workflow com Map Distribuído](images/diagrama-workflow-map.png)
+
+## 📑 Definição da Máquina de Estado (ASL)
+
+Este é o código-fonte (JSON) da nossa máquina de estado. A ASL define o `Map` Distribuído, apontando para o S3 como leitor (`ItemReader`) e para a função Lambda como processador (`ItemProcessor`).
+
+```json
+{
+  "Comment": "Desafio DIO: Processamento em massa de arquivos S3 com Map Distribuído",
+  "StartAt": "Processar Arquivos do S3",
+  "States": {
+    "Processar Arquivos do S3": {
+      "Type": "Map",
+      "MaxConcurrency": 1000,
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:listObjectsV2",
+        "Parameters": {
+          "Bucket": "meu-bucket-de-entrada-dio"
+        }
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
+        },
+        "StartAt": "Processar Arquivo Individual",
+        "States": {
+          "Processar Arquivo Individual": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-east-1:123456789012:function:dio-lab-processador-de-arquivos",
+            "End": true,
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 2,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "Next": "FalhaNoProcessamento"
+              }
+            ]
+          },
+          "FalhaNoProcessamento": {
+            "Type": "Fail",
+            "Cause": "Falha ao processar o arquivo"
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}
