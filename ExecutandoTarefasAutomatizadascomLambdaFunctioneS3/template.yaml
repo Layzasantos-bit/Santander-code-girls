@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Desafio DIO - Tarefas Automatizadas com S3, Lambda e DynamoDB
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    MemorySize: 256
+
+Resources:
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: dio-desafio-s3-lambda-uploads
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  RegistrosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: dio-desafio-registros-arquivos
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  S3ProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dio-desafio-s3-processor
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref UploadBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RegistrosTable
+      Events:
+        S3UploadEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadBucket
+            Events: s3:ObjectCreated:*
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref RegistrosTable
+
+Outputs:
+  BucketName:
+    Description: "Nome do Bucket S3 para uploads"
+    Value: !Ref UploadBucket
+  TableName:
+    Description: "Nome da Tabela DynamoDB para registros"
+    Value: !Ref RegistrosTable
+  LambdaFunctionArn:
+    Description: "ARN da Função Lambda processadora"
+    Value: !GetAtt S3ProcessFunction.Arn
